@@ -1,0 +1,18 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "vt-arc": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "VT ARC LLM",
+      "options": {
+        "baseURL": "https://llm-api.arc.vt.edu/api/v1",
+        "apiKey": "{env:VT_ARC_API_KEY}"
+      },
+      "models": {
+        "Kimi-K2.5": { "name": "Kimi K2.5 (complex reasoning)" },
+        "gpt-oss-120b": { "name": "GPT-OSS 120B (fast)" }
+      }
+    }
+  },
+  "model": "vt-arc.Kimi-K2.5"
+}
