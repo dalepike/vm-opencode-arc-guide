@@ -1,6 +1,6 @@
 # VM-Isolated OpenCode + VT ARC Setup Guide
 
-A sandboxed version of the [OpenCode + ARC setup guide](https://github.com/dalepike/opencode-arc-guide) that runs OpenCode inside a lightweight virtual machine. Your API key, config, and all AI interactions are isolated from your host system.
+A sandboxed version of the [OpenCode + ARC setup guide](https://github.com/dalepike/opencode-arc-guide) that runs OpenCode inside a Docker container. Your API key, config, and all AI interactions are isolated from your host system.
 
 > **Status:** Early development
 > **Companion project:** [opencode-arc-guide](https://github.com/dalepike/opencode-arc-guide) (standard guide)
@@ -9,98 +9,61 @@ A sandboxed version of the [OpenCode + ARC setup guide](https://github.com/dalep
 
 ## Why Isolate?
 
-The [standard guide](https://github.com/dalepike/opencode-arc-guide) installs OpenCode directly on your machine and stores the API key in your shell config. That works well for most users. This project adds a layer of isolation for situations where you want stronger boundaries:
+The [standard guide](https://github.com/dalepike/opencode-arc-guide) installs OpenCode directly on your machine and stores the API key in your shell config. That works well for most users. This project adds a layer of isolation:
 
-- **API key containment.** The key lives only inside the VM, not in your host shell config.
-- **Filesystem isolation.** OpenCode can only see files you explicitly share into the VM, not your entire home directory.
+- **API key containment.** The key lives only inside the container, not in your host shell config.
+- **Filesystem isolation.** OpenCode can only see files you explicitly share into the container.
 - **Disposability.** Destroy and recreate the environment at will. Nothing persists on your host.
-- **Reproducibility.** The same VM image works identically on any machine.
+- **Reproducibility.** The same image works identically on any machine with Docker.
 
 ---
 
-## Architecture Options
+## Two Images
 
-This project is evaluating three approaches. The right choice depends on the balance between security, usability, and setup complexity.
+| Image | Command | What It Is |
+|-------|---------|------------|
+| **Base** | `docker compose run --rm opencode` | Clean OpenCode + VT ARC. No opinions about workflow. |
+| **Harness** | `docker compose run --rm opencode-harness` | Same, plus a structured workflow (plan before coding, verify after changes). |
 
-### Option A: Lima VM (lightweight, macOS/Linux native)
-
-```
-┌─────────────────────────────┐
-│  Host (macOS/Linux)         │
-│                             │
-│  ┌───────────────────────┐  │
-│  │  Lima VM (Ubuntu)     │  │
-│  │  - OpenCode installed │  │
-│  │  - API key stored     │  │
-│  │  - Config file        │  │
-│  │  - Shared project dir │  │
-│  └───────────────────────┘  │
-│                             │
-│  ~/projects/ ←──mounted──→ /work/  │
-└─────────────────────────────┘
-```
-
-- **Pros:** Already available on Dale's system (Lima 2.0.3). Native macOS Virtualization.framework. Full Linux environment. Can mount specific project folders read-write while keeping the rest of the host isolated.
-- **Cons:** macOS/Linux only. Heavier than a container. Requires Lima knowledge.
-- **Best for:** Individual developers who want strong isolation with near-native performance.
-
-### Option B: Docker container
-
-```
-┌─────────────────────────────┐
-│  Host (any OS)              │
-│                             │
-│  ┌───────────────────────┐  │
-│  │  Docker container     │  │
-│  │  - OpenCode installed │  │
-│  │  - API key via env    │  │
-│  │  - Config baked in    │  │
-│  │  - Volume mount       │  │
-│  └───────────────────────┘  │
-│                             │
-│  ~/projects/ ←──volume──→ /work/  │
-└─────────────────────────────┘
-```
-
-- **Pros:** Cross-platform. Familiar to more users. Dockerfile is self-documenting. Easy to distribute.
-- **Cons:** TUI rendering in Docker can be tricky (requires `-it` and proper terminal allocation). Docker Desktop required on macOS/Windows. Less isolation than a VM (shares the host kernel).
-- **Best for:** Teams who want a reproducible, distributable setup. CI/CD integration.
-
-### Option C: Lima VM + Docker inside (maximum isolation)
-
-```
-┌──────────────────────────────────┐
-│  Host (macOS/Linux)              │
-│                                  │
-│  ┌────────────────────────────┐  │
-│  │  Lima VM (Ubuntu)          │  │
-│  │                            │  │
-│  │  ┌──────────────────────┐  │  │
-│  │  │  Docker container    │  │  │
-│  │  │  - OpenCode          │  │  │
-│  │  │  - API key           │  │  │
-│  │  │  - Config            │  │  │
-│  │  └──────────────────────┘  │  │
-│  │                            │  │
-│  └────────────────────────────┘  │
-│                                  │
-│  ~/projects/ ←──mounted──→ /work/     │
-└──────────────────────────────────┘
-```
-
-- **Pros:** Maximum isolation (VM + container). Network policies at VM level. Docker manages the application layer while VM manages the security boundary.
-- **Cons:** Most complex setup. Double the overhead. Harder to debug.
-- **Best for:** High-security environments, shared research computing.
+Both prompt for your API key on first run if not provided via `.env`.
 
 ---
 
-## Current Direction
+## Quick Start
 
-**Starting with Option B (Docker)** because:
-1. Cross-platform (works on macOS, Linux, and Windows)
-2. Dockerfile serves as executable documentation
-3. Easiest to distribute and reproduce
-4. Can layer Option A on top later for users who want VM-level isolation
+### Prerequisites
+
+- Docker Desktop (macOS/Windows) or Docker Engine (Linux)
+- VT ARC API key from [llm.arc.vt.edu](https://llm.arc.vt.edu/)
+- VT campus network or VPN connection
+
+### Setup
+
+```bash
+# 1. Clone this repo
+git clone https://github.com/dalepike/vm-opencode-arc-guide.git
+cd vm-opencode-arc-guide
+
+# 2. (Optional) Pre-set your API key
+cp .env.example .env
+# Edit .env and replace sk-your-key-here with your actual key
+
+# 3. Create a project folder (this is what OpenCode can see)
+mkdir -p projects
+
+# 4. Build and launch
+docker compose run --rm opencode
+```
+
+If you skipped step 2, the container will prompt you for your API key at launch. It tests the connection before starting OpenCode.
+
+### With the Harness
+
+```bash
+docker compose run --rm opencode-harness
+```
+
+This includes an AGENTS.md that instructs OpenCode to follow a structured workflow: understand, plan, confirm, then execute one change at a time.
 
 ---
 
@@ -108,36 +71,46 @@ This project is evaluating three approaches. The right choice depends on the bal
 
 ```
 vm-opencode-arc-guide/
-├── README.md              # This file
-├── Dockerfile             # OpenCode + VT ARC in a container
-├── docker-compose.yml     # One-command launch with volume mounts
-├── .env.example           # Template for API key
-├── config/
-│   └── opencode.json      # VT ARC provider config (baked into image)
-└── scripts/
-    ├── start.sh           # Launch script with TUI support
-    └── setup-lima.sh      # (Future) Lima VM setup for Option A
+  README.md              # This file
+  Dockerfile             # Base image: OpenCode + VT ARC
+  Dockerfile.harness     # Harness image: adds structured workflow
+  docker-compose.yml     # Both services defined here
+  .env.example           # Template for API key
+  .env                   # Your actual API key (gitignored)
+  config/
+    opencode.json        # VT ARC provider config (baked into images)
+  scripts/
+    entrypoint.sh        # Handles API key prompt + connectivity check
+  harness/
+    AGENTS.md            # Structured workflow instructions for OpenCode
+  projects/              # Shared folder mounted into the container
 ```
 
 ---
 
-## Quick Start (coming soon)
+## How It Works
+
+1. The container starts and runs `entrypoint.sh`
+2. If `VT_ARC_API_KEY` is not set, it prompts you to paste it
+3. It tests connectivity to `llm-api.arc.vt.edu`
+4. If connected, it launches OpenCode
+5. OpenCode reads the ARC config from `/root/.config/opencode/opencode.json`
+6. Your `projects/` folder is mounted at `/work` (read-write)
+
+---
+
+## Customizing the Harness
+
+Edit `harness/AGENTS.md` to change the instructions OpenCode follows. Rebuild after changes:
 
 ```bash
-# 1. Clone this repo
-git clone https://github.com/dalepike/vm-opencode-arc-guide.git
-cd vm-opencode-arc-guide
-
-# 2. Add your API key
-cp .env.example .env
-# Edit .env and add your key from https://llm.arc.vt.edu/
-
-# 3. Launch
-docker compose run --rm opencode
-
-# You're now in an isolated OpenCode session connected to VT ARC.
-# Only the ./projects/ folder is shared with the container.
+docker compose build opencode-harness
+docker compose run --rm opencode-harness
 ```
+
+The AGENTS.md is copied into the image at `/work/AGENTS.md`. When you mount `projects/` over `/work`, you can either:
+- Let the AGENTS.md from the image be used (if projects/ doesn't contain one)
+- Override it by placing your own AGENTS.md in `projects/`
 
 ---
 

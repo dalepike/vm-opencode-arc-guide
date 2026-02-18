@@ -1,9 +1,24 @@
 services:
+  # Base: clean OpenCode + VT ARC, no harness
   opencode:
     build: .
     stdin_open: true
     tty: true
     env_file:
-      - .env
+      - path: .env
+        required: false
+    volumes:
+      - ./projects:/work
+
+  # Harness: OpenCode + VT ARC + structured workflow
+  opencode-harness:
+    build:
+      context: .
+      dockerfile: Dockerfile.harness
+    stdin_open: true
+    tty: true
+    env_file:
+      - path: .env
+        required: false
     volumes:
       - ./projects:/work

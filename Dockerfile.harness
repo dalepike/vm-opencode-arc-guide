@@ -1,3 +1,4 @@
+# Extends the base image with a structured workflow harness
 FROM ubuntu:24.04
 
 RUN apt-get update && \
@@ -17,14 +18,15 @@ RUN curl -fsSL https://opencode.ai/install -o /tmp/install.sh && \
 RUN mkdir -p /root/.config/opencode
 COPY config/opencode.json /root/.config/opencode/opencode.json
 
-# Copy entrypoint (handles API key prompt + connectivity check)
-COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+# Copy entrypoint
+COPY scripts/entrypoint-harness.sh /usr/local/bin/entrypoint.sh
+
+# Stash AGENTS.md where the volume mount won't clobber it
+# The entrypoint copies it into /work at runtime if none exists
+COPY harness/AGENTS.md /opt/harness/AGENTS.md
 
 # Working directory for mounted project files
 RUN mkdir -p /work
 WORKDIR /work
-
-# API key is passed via environment variable at runtime (not baked in)
-# Can be set via .env file, -e flag, or entered interactively at launch
 
 ENTRYPOINT ["entrypoint.sh"]
