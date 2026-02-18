@@ -22,3 +22,16 @@ services:
         required: false
     volumes:
       - ./projects:/work
+
+  # Superpowers: OpenCode + VT ARC + full superpowers methodology
+  opencode-superpowers:
+    build:
+      context: .
+      dockerfile: Dockerfile.superpowers
+    stdin_open: true
+    tty: true
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./projects:/work

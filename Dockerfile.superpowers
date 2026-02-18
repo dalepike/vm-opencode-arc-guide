@@ -1,0 +1,31 @@
+# OpenCode + VT ARC + Superpowers methodology
+FROM ubuntu:24.04
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      curl \
+      ca-certificates \
+      git \
+      python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install OpenCode
+RUN curl -fsSL https://opencode.ai/install -o /tmp/install.sh && \
+    bash /tmp/install.sh && \
+    rm /tmp/install.sh
+
+# Copy VT ARC provider config
+RUN mkdir -p /root/.config/opencode
+COPY config/opencode.json /root/.config/opencode/opencode.json
+
+# Copy entrypoint
+COPY scripts/entrypoint-superpowers.sh /usr/local/bin/entrypoint.sh
+
+# Stash superpowers AGENTS.md where the volume mount won't clobber it
+COPY harness/AGENTS.superpowers.md /opt/harness/AGENTS.md
+
+# Working directory for mounted project files
+RUN mkdir -p /work
+WORKDIR /work
+
+ENTRYPOINT ["entrypoint.sh"]

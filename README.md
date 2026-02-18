@@ -18,14 +18,15 @@ The [standard guide](https://github.com/dalepike/opencode-arc-guide) installs Op
 
 ---
 
-## Two Images
+## Three Images
 
 | Image | Command | What It Is |
 |-------|---------|------------|
 | **Base** | `docker compose run --rm opencode` | Clean OpenCode + VT ARC. No opinions about workflow. |
-| **Harness** | `docker compose run --rm opencode-harness` | Same, plus a structured workflow (plan before coding, verify after changes). |
+| **Harness** | `docker compose run --rm opencode-harness` | Lightweight structured workflow (plan, confirm, verify). |
+| **Superpowers** | `docker compose run --rm opencode-superpowers` | Full [superpowers](https://github.com/obra/superpowers) methodology: mandatory design-plan-implement-verify phases, TDD, systematic debugging. |
 
-Both prompt for your API key on first run if not provided via `.env`.
+All three prompt for your API key on first run if not provided via `.env`.
 
 ---
 
@@ -51,19 +52,35 @@ cp .env.example .env
 # 3. Create a project folder (this is what OpenCode can see)
 mkdir -p projects
 
-# 4. Build and launch
-docker compose run --rm opencode
+# 4. Build and launch (pick one)
+docker compose run --rm opencode              # base
+docker compose run --rm opencode-harness      # lightweight harness
+docker compose run --rm opencode-superpowers  # full superpowers methodology
 ```
 
 If you skipped step 2, the container will prompt you for your API key at launch. It tests the connection before starting OpenCode.
 
-### With the Harness
+---
 
-```bash
-docker compose run --rm opencode-harness
-```
+## Image Details
 
-This includes an AGENTS.md that instructs OpenCode to follow a structured workflow: understand, plan, confirm, then execute one change at a time.
+### Base
+
+Clean OpenCode connected to VT ARC. No workflow opinions. Good for exploration and general use.
+
+### Harness
+
+Adds a lightweight AGENTS.md that instructs OpenCode to: understand before modifying, plan before coding, confirm before non-trivial changes, verify after changes.
+
+### Superpowers
+
+Adapted from [obra/superpowers](https://github.com/obra/superpowers) (42k+ stars), the most popular agentic coding methodology. Enforces:
+
+- **Four mandatory phases:** Design, Plan, Implement, Verify. No skipping.
+- **TDD as non-negotiable:** Red-green-refactor for every change. No code without a failing test first.
+- **Evidence-based verification:** Every claim requires command output, not assertions.
+- **Systematic debugging:** Root cause investigation before any fix. Three failed fixes trigger architectural review.
+- **Quality gates:** Specific evidence required for each type of claim (tests pass, build succeeded, bug fixed, etc.)
 
 ---
 
@@ -71,46 +88,49 @@ This includes an AGENTS.md that instructs OpenCode to follow a structured workfl
 
 ```
 vm-opencode-arc-guide/
-  README.md              # This file
-  Dockerfile             # Base image: OpenCode + VT ARC
-  Dockerfile.harness     # Harness image: adds structured workflow
-  docker-compose.yml     # Both services defined here
-  .env.example           # Template for API key
-  .env                   # Your actual API key (gitignored)
+  README.md                    # This file
+  Dockerfile                   # Base image: OpenCode + VT ARC
+  Dockerfile.harness           # Harness image: lightweight workflow
+  Dockerfile.superpowers       # Superpowers image: full methodology
+  docker-compose.yml           # All three services
+  .env.example                 # Template for API key
+  .env                         # Your actual API key (gitignored)
   config/
-    opencode.json        # VT ARC provider config (baked into images)
+    opencode.json              # VT ARC provider config (baked into images)
   scripts/
-    entrypoint.sh        # Handles API key prompt + connectivity check
+    entrypoint.sh              # Base entrypoint
+    entrypoint-harness.sh      # Harness entrypoint
+    entrypoint-superpowers.sh  # Superpowers entrypoint
   harness/
-    AGENTS.md            # Structured workflow instructions for OpenCode
-  projects/              # Shared folder mounted into the container
+    AGENTS.md                  # Lightweight workflow instructions
+    AGENTS.superpowers.md      # Full superpowers methodology
+  projects/                    # Shared folder mounted into the container
 ```
 
 ---
 
 ## How It Works
 
-1. The container starts and runs `entrypoint.sh`
-2. If `VT_ARC_API_KEY` is not set, it prompts you to paste it
-3. It tests connectivity to `llm-api.arc.vt.edu`
-4. If connected, it launches OpenCode
-5. OpenCode reads the ARC config from `/root/.config/opencode/opencode.json`
-6. Your `projects/` folder is mounted at `/work` (read-write)
+1. The container starts and runs its entrypoint script
+2. For harness/superpowers images: copies the AGENTS.md into `/work` if none exists
+3. If `VT_ARC_API_KEY` is not set, prompts you to paste it
+4. Tests connectivity to `llm-api.arc.vt.edu`
+5. If connected, launches OpenCode
+6. OpenCode reads the ARC config and the AGENTS.md from the working directory
+7. Your `projects/` folder is mounted at `/work` (read-write)
 
 ---
 
-## Customizing the Harness
+## Customizing
 
-Edit `harness/AGENTS.md` to change the instructions OpenCode follows. Rebuild after changes:
+Edit the AGENTS.md files in `harness/` to change the instructions OpenCode follows. Rebuild after changes:
 
 ```bash
-docker compose build opencode-harness
-docker compose run --rm opencode-harness
+docker compose build opencode-superpowers
+docker compose run --rm opencode-superpowers
 ```
 
-The AGENTS.md is copied into the image at `/work/AGENTS.md`. When you mount `projects/` over `/work`, you can either:
-- Let the AGENTS.md from the image be used (if projects/ doesn't contain one)
-- Override it by placing your own AGENTS.md in `projects/`
+You can also override per-project by placing your own AGENTS.md in `projects/`. The entrypoint only copies the built-in AGENTS.md if none already exists in the working directory.
 
 ---
 
@@ -121,6 +141,7 @@ The AGENTS.md is copied into the image at `/work/AGENTS.md`. When you mount `pro
 | [opencode-arc-guide](https://github.com/dalepike/opencode-arc-guide) | Standard (non-isolated) setup guide |
 | [OpenCode](https://github.com/anomalyco/opencode) | The OpenCode project itself |
 | [VT ARC LLM API](https://docs.arc.vt.edu/ai/011_llm_api_arc_vt_edu.html) | ARC API documentation |
+| [obra/superpowers](https://github.com/obra/superpowers) | Original superpowers framework (Claude Code) |
 
 ---
 
